@@ -1,0 +1,62 @@
+#!/bin/sh
+#
+#An example hook script to prepare a packed repository for use over
+# dumb transports.
+#
+# To enable this hook, rename this file to "post-update".
+
+echo "---------------------Started"
+
+while read oval nval ref ; do
+	if expr "$ref" : "^refs/heads/"; then
+		if expr "$oval" : '0*$' >/dev/null
+		then
+			revspec=$nval
+		else
+			revspec=$oval..$nval
+		fi
+
+		other_branches=$(git for-each-ref --format='%(refname)' refs/heads/ | grep -F -v $ref)
+		
+		i=0
+		gitItems=
+
+		# You may want to collect the revisions to sort out
+		# duplicates before the transmission to the bugtracker,
+		# but not sorting is easier ;-)
+		for revision in `git rev-parse --not $other_branches | git rev-list --stdin $revspec`; do
+			# I don't know if you need to url-escape the content
+			# Also you may want to transmit the data in a POST request,
+
+			echo "*******************"
+			#Setting variables
+
+			branch=$ref
+
+			author=`git show $revision --quiet --pretty="format:%aN"`
+
+			email=`git show $revision --quiet --pretty="format:%aE"`
+
+			commitDate=`git show $revision --quiet --pretty="format:%cD"`
+
+			subject=`git show $revision --quiet --pretty="format:%s"`
+
+			body=`git show $revision --quiet --pretty="format:%b"`
+
+			files=`git show $revision --pretty="format:" --name-only`
+
+			echo "Calling addition of message in Jira"
+
+			#Needs to be between () so the script continues working, otherwise will stop execution
+			(exec "C:\Git\JiraGitHook\GitJiraHook.ConsoleApp.exe" "$branch", "$author", "$email", "$commitDate", "$subject", "$files", "$body") &&
+
+			echo "*******************"
+		done
+		
+		
+		#exec "C:\Git\JiraGitHook\GitJiraHook.ConsoleApp.exe" "$gitItems"
+
+	fi
+done
+
+echo "---------------------Finished"
